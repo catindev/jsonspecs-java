@@ -12,7 +12,7 @@
 
   <name>jsonspecs</name>
   <description>Java runtime for jsonspecs: composable validation pipelines powered by JSON rules. Zero production dependencies.</description>
-  <url>https://github.com/catindev/jsonspecs</url>
+  <url>https://github.com/catindev/jsonspecs-java</url>
 
   <licenses>
     <license>
@@ -29,18 +29,17 @@
   </developers>
 
   <scm>
-    <connection>scm:git:https://github.com/catindev/jsonspecs.git</connection>
-    <developerConnection>scm:git:https://github.com/catindev/jsonspecs.git</developerConnection>
-    <url>https://github.com/catindev/jsonspecs</url>
+    <connection>scm:git:https://github.com/catindev/jsonspecs-java.git</connection>
+    <developerConnection>scm:git:https://github.com/catindev/jsonspecs-java.git</developerConnection>
+    <url>https://github.com/catindev/jsonspecs-java</url>
   </scm>
 
   <issueManagement>
     <system>GitHub</system>
-    <url>https://github.com/catindev/jsonspecs/issues</url>
+    <url>https://github.com/catindev/jsonspecs-java/issues</url>
   </issueManagement>
 
   <properties>
-    <!-- Use release instead of source+target — catches cross-compilation errors -->
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>5.10.2</junit.version>
@@ -59,7 +58,7 @@
   <build>
     <plugins>
 
-      <!-- Compiler: release flag replaces deprecated source+target -->
+      <!-- Compiler -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -82,7 +81,7 @@
         </configuration>
       </plugin>
 
-      <!-- JAR manifest: Automatic-Module-Name for JPMS users -->
+      <!-- JAR manifest: Automatic-Module-Name for JPMS -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
@@ -126,7 +125,7 @@
         </executions>
       </plugin>
 
-      <!-- Enforcer: fail fast on wrong Java version -->
+      <!-- Enforcer: fail fast on wrong Java/Maven version -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
@@ -150,30 +149,47 @@
         </executions>
       </plugin>
 
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-gpg-plugin</artifactId>
-        <version>3.2.4</version>
-        <executions>
-          <execution>
-            <id>sign-artifacts</id>
-            <phase>verify</phase>
-            <goals><goal>sign</goal></goals>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.sonatype.central</groupId>
-        <artifactId>central-publishing-maven-plugin</artifactId>
-        <version>0.5.0</version>
-        <extensions>true</extensions>
-        <configuration>
-          <publishingServerId>central</publishingServerId>
-          <autoPublish>true</autoPublish>
-        </configuration>
-      </plugin>      
-
     </plugins>
   </build>
+
+  <!--
+    Release profile: GPG signing + Central publishing.
+    Activated only with: mvn deploy -Prelease
+    NOT activated in CI (mvn verify) — no GPG key needed on CI runners.
+  -->
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.2.4</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals><goal>sign</goal></goals>
+              </execution>
+            </executions>
+          </plugin>
+
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>0.5.0</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <autoPublish>true</autoPublish>
+            </configuration>
+          </plugin>
+
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
 </project>
