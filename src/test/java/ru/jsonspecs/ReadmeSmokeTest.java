@@ -1,6 +1,5 @@
 package ru.jsonspecs;
 
-import ru.jsonspecs.compiler.Compiled;
 import ru.jsonspecs.operators.OperatorPack;
 import org.junit.jupiter.api.Test;
 
@@ -84,7 +83,7 @@ class ReadmeSmokeTest {
 
         List<Map<String, Object>> artifacts = List.of(nameRequired, emailFormat, docNotExpired, pipeline);
 
-        Compiled compiled;
+        CompiledRules compiled;
         try {
             compiled = engine.compile(artifacts);
         } catch (CompilationException e) {
@@ -197,7 +196,7 @@ class ReadmeSmokeTest {
         );
 
         Engine engine = Engine.create(OperatorPack.standard());
-        Compiled compiled = engine.compile(List.of(docExpired, nameRequired, pipeline));
+        var compiled = engine.compile(List.of(docExpired, nameRequired, pipeline));
 
         // Document expired — EXCEPTION should stop immediately, name check should NOT run
         Map<String, Object> payload = Map.of(

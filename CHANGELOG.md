@@ -4,9 +4,27 @@ All notable changes to this project will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/)
 
----
+## [1.1.0] - 2026-03-28
 
-## [1.0.0] — 2024
+### Added
+
+- Added new stable public type `CompiledRules` in `ru.jsonspecs`.
+- `Engine.compile(...)` now returns `CompiledRules`.
+- `Engine.runPipeline(...)` now accepts `CompiledRules`.
+- `CompiledRules` is an immutable, thread-safe public handle for compiled rule artifacts.
+
+### Changed
+
+- The compile result is now part of the stable public API instead of being exposed only through internal compiler types.
+- This makes it possible to build services and long-lived application components on top of `jsonspecs-java` without depending on `ru.jsonspecs.compiler.*`.
+- README, smoke examples, and tests were updated to use `CompiledRules`.
+
+### Notes
+
+- `CompiledRules` is an opaque bridge over the internal compiler model. Internal compile structures remain non-public and are still considered implementation details.
+- This is an additive API improvement intended to make the library cleaner for external service usage.
+
+## [1.0.0] - 2026-03-28
 
 Initial release. Java runtime for the [jsonspecs](https://www.npmjs.com/package/jsonspecs) rule engine.
 Implements the full SPEC semantics — JSON rule artifacts compiled and calibrated on the npm side

@@ -1,6 +1,5 @@
 package ru.jsonspecs;
 
-import ru.jsonspecs.compiler.Compiled;
 import ru.jsonspecs.operators.*;
 import ru.jsonspecs.util.DeepGet;
 import org.junit.jupiter.api.BeforeAll;
