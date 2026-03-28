@@ -54,7 +54,7 @@ The same JSON artifact files (`rule`, `condition`, `pipeline`, `dictionary`) wor
 - `$context.*` field references via `__context` in payload
 - Flat and nested payloads
 - `matches_regex` flags like `"i"`, `"m"`, `"s"`
-- Compile-time validation checks such as invalid regex, duplicate codes, unresolved refs, and DAG cycles
+- Compile-time validation classes such as invalid regex, duplicate codes, unresolved refs, and DAG cycles
 
 ### What is not portable
 
@@ -62,7 +62,7 @@ The same JSON artifact files (`rule`, `condition`, `pipeline`, `dictionary`) wor
 - Trace entry details may differ between runtimes and should be treated as diagnostics, not as a strict contract
 - Custom operators must be implemented independently on each runtime
 
-The same JSON artifact files work on both runtimes without modification. Compiled results do not: each runtime builds its own `CompiledRules` instance from the same JSON artifacts.
+Compiled results do not: each runtime builds its own `CompiledRules` instance from the same JSON artifacts.
 
 ## Quick start
 
@@ -185,8 +185,8 @@ Engine engine = Engine.create(OperatorPack.standard());
 #### compile
 
 ```java
-CompiledRules compiled = engine.compile(artifacts);
-CompiledRules compiled = engine.compile(artifacts, CompileOptions.withSources(sourceMap));
+var compiled = engine.compile(artifacts);
+var compiled = engine.compile(artifacts, CompileOptions.withSources(sourceMap));
 ```
 
 Throws `CompilationException` if any artifact is invalid.
@@ -467,7 +467,7 @@ The following are implementation details and may change without notice:
 | Package / class                            | Contains                                                      |
 | ------------------------------------------ | ------------------------------------------------------------- |
 | `ru.jsonspecs.compiler.*`                  | Compiler phases and compiled artifact internals               |
-| `ru.jsonspecs.Runner`                      | Runtime execution internals                                   |
+| Runtime internals                          | `Runner` and execution internals                              |
 | `ru.jsonspecs.operators.StandardOperators` | Built-in operator implementations                             |
 | `ru.jsonspecs.util.*`                      | Internal utilities such as wildcard expansion and comparisons |
 
@@ -496,7 +496,7 @@ If you find yourself importing these directly, that usually means a missing publ
 | `field_greater_or_equal_than_field` | `field` >= `value_field`                                         |
 | `field_less_or_equal_than_field`    | `field` <= `value_field`                                         |
 
-All built-in check operators are also available as predicates for use in `condition.when`.
+Built-in predicate operators are available for use in `condition.when`. See the JavaDocs or source for the exact predicate set.
 
 ## Examples and tests
 
