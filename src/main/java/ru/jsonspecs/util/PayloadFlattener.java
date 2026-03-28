@@ -25,6 +25,10 @@ import java.util.Map;
  *   { "a": [{ "b": 1 }] }           →  { "a[0].b": 1 }
  *   { "__context": { "k": "v" } }   →  { "__context": { "k": "v" } }  (intact)
  * </pre>
+ *
+ * <p><b>Internal API.</b> This class is an implementation detail of the jsonspecs engine.
+ * It is not part of the stable public API and may change without notice between versions.
+ * Use {@link ru.jsonspecs.Engine} as the only entry point.
  */
 public final class PayloadFlattener {
 

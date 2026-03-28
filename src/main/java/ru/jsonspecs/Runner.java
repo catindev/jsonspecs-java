@@ -11,6 +11,10 @@ import java.util.*;
 /**
  * Executes a compiled pipeline against a flat payload.
  * Package-private — access via {@link Engine}.
+ *
+ * <p><b>Internal API.</b> This class is an implementation detail of the jsonspecs engine.
+ * It is not part of the stable public API and may change without notice between versions.
+ * Use {@link ru.jsonspecs.Engine} as the only entry point.
  */
 final class Runner {
 

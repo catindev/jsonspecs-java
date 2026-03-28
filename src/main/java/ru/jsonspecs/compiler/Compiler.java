@@ -25,6 +25,10 @@ import java.util.regex.PatternSyntaxException;
  *
  * <p>Each phase accumulates all errors before throwing, so callers receive
  * the complete list of issues rather than just the first one.
+ *
+ * <p><b>Internal API.</b> This class is an implementation detail of the jsonspecs engine.
+ * It is not part of the stable public API and may change without notice between versions.
+ * Use {@link ru.jsonspecs.Engine} as the only entry point.
  */
 public final class Compiler {
 

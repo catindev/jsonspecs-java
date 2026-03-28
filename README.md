@@ -1,4 +1,4 @@
-# JSONSpecs (Java)
+# jsonspecs (Java)
 
 [![CI](https://github.com/catindev/jsonspecs-java/actions/workflows/ci.yml/badge.svg)](https://github.com/catindev/jsonspecs-java/actions/workflows/ci.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/ru.jsonspecs/jsonspecs)](https://central.sonatype.com/artifact/ru.jsonspecs/jsonspecs)
@@ -37,7 +37,6 @@ without changing a single JSON file.
 The same JSON artifact files (rules, conditions, pipelines, dictionaries) work on both runtimes without modification.
 
 **What is guaranteed to match:**
-
 - All artifact types: `rule`, `condition`, `pipeline`, `dictionary`
 - All standard operators (same names and semantics as the npm package)
 - Issue shape: `level`, `code`, `message`, `field`, `ruleId`, `expected`, `actual`
@@ -49,7 +48,6 @@ The same JSON artifact files (rules, conditions, pipelines, dictionaries) work o
 - Compile-time validation: invalid regex, duplicate codes, unresolved refs, DAG cycles
 
 **Implementation notes:**
-
 - `Compiled` objects are not portable between runtimes (compile separately on each side)
 - Trace format details may differ between runtimes (treat as diagnostic, not as contract)
 - Custom operators must be implemented independently on each runtime
@@ -217,13 +215,13 @@ result.isOk()     // true for OK and OK_WITH_WARNINGS
 
 **Status values:**
 
-| Status               | Meaning                                                               |
-| -------------------- | --------------------------------------------------------------------- |
-| `"OK"`               | All checks passed                                                     |
-| `"OK_WITH_WARNINGS"` | Passed, but WARNING-level issues present                              |
-| `"ERROR"`            | One or more ERROR-level issues; pipeline ran to completion            |
-| `"EXCEPTION"`        | EXCEPTION-level issue stopped the pipeline early                      |
-| `"ABORT"`            | Engine fault (bug in custom operator, etc.). Not a validation result. |
+| Status | Meaning |
+|---|---|
+| `"OK"` | All checks passed |
+| `"OK_WITH_WARNINGS"` | Passed, but WARNING-level issues present |
+| `"ERROR"` | One or more ERROR-level issues; pipeline ran to completion |
+| `"EXCEPTION"` | EXCEPTION-level issue stopped the pipeline early |
+| `"ABORT"` | Engine fault (bug in custom operator, etc.). Not a validation result. |
 
 **Issue fields:**
 
@@ -241,11 +239,11 @@ issue.getExpected()   // expected value from the rule (may be null)
 
 ### Result levels
 
-| Level       | Meaning                       | Pipeline behaviour                          |
-| ----------- | ----------------------------- | ------------------------------------------- |
-| `ERROR`     | Validation failure            | Accumulated; does **not** stop the pipeline |
-| `WARNING`   | Soft check, data quality hint | Accumulated; does **not** stop the pipeline |
-| `EXCEPTION` | Hard block, cannot proceed    | Immediately **stops** the pipeline          |
+| Level | Meaning | Pipeline behaviour |
+|---|---|---|
+| `ERROR` | Validation failure | Accumulated; does **not** stop the pipeline |
+| `WARNING` | Soft check, data quality hint | Accumulated; does **not** stop the pipeline |
+| `EXCEPTION` | Hard block, cannot proceed | Immediately **stops** the pipeline |
 
 ---
 
@@ -254,7 +252,6 @@ issue.getExpected()   // expected value from the rule (may be null)
 The engine accepts `List<Map<String, Object>>`. Load your JSON files however you prefer:
 
 **Jackson:**
-
 ```java
 ObjectMapper mapper = new ObjectMapper();
 List<Map<String, Object>> artifacts = Files.walk(rulesDir)
@@ -264,7 +261,6 @@ List<Map<String, Object>> artifacts = Files.walk(rulesDir)
 ```
 
 **Gson:**
-
 ```java
 Gson gson = new Gson();
 Map<String, Object> artifact = gson.fromJson(reader, new TypeToken<Map<String, Object>>() {}.getType());
@@ -336,11 +332,11 @@ Match arrays using `[*]` in field paths:
 }
 ```
 
-| Mode             | Meaning                                   |
-| ---------------- | ----------------------------------------- |
+| Mode | Meaning |
+|---|---|
 | `EACH` (default) | Check every element; collect all failures |
-| `ALL`            | Pass only if all elements match           |
-| `ANY`            | Pass if at least one element matches      |
+| `ALL` | Pass only if all elements match |
+| `ANY` | Pass if at least one element matches |
 
 ---
 
@@ -375,33 +371,33 @@ Breaking changes to any of them require a major version bump.
 
 ### Stable
 
-| Class                  | Package                  | Description                                       |
-| ---------------------- | ------------------------ | ------------------------------------------------- |
-| `Engine`               | `ru.jsonspecs`           | Main entry point: compile and run                 |
-| `CompilationException` | `ru.jsonspecs`           | Thrown by `compile()` with full error list        |
-| `PipelineResult`       | `ru.jsonspecs`           | Result of `runPipeline()`                         |
-| `Issue`                | `ru.jsonspecs`           | A single validation issue                         |
-| `TraceEntry`           | `ru.jsonspecs`           | A single trace entry                              |
-| `CompileOptions`       | `ru.jsonspecs`           | Options for `compile()`                           |
-| `RunOptions`           | `ru.jsonspecs`           | Options for `runPipeline()`                       |
-| `OperatorPack`         | `ru.jsonspecs.operators` | Operator collection; extend with custom operators |
-| `CheckOperator`        | `ru.jsonspecs.operators` | Interface for custom check operators              |
-| `PredicateOperator`    | `ru.jsonspecs.operators` | Interface for custom predicate operators          |
-| `CheckResult`          | `ru.jsonspecs.operators` | Result type returned by check operators           |
-| `PredicateResult`      | `ru.jsonspecs.operators` | Result type returned by predicate operators       |
-| `OperatorContext`      | `ru.jsonspecs.operators` | Context passed to operators at runtime            |
-| `DeepGet`              | `ru.jsonspecs.util`      | Field lookup helper for custom operators          |
+| Class | Package | Description |
+|---|---|---|
+| `Engine` | `ru.jsonspecs` | Main entry point: compile and run |
+| `CompilationException` | `ru.jsonspecs` | Thrown by `compile()` with full error list |
+| `PipelineResult` | `ru.jsonspecs` | Result of `runPipeline()` |
+| `Issue` | `ru.jsonspecs` | A single validation issue |
+| `TraceEntry` | `ru.jsonspecs` | A single trace entry |
+| `CompileOptions` | `ru.jsonspecs` | Options for `compile()` |
+| `RunOptions` | `ru.jsonspecs` | Options for `runPipeline()` |
+| `OperatorPack` | `ru.jsonspecs.operators` | Operator collection; extend with custom operators |
+| `CheckOperator` | `ru.jsonspecs.operators` | Interface for custom check operators |
+| `PredicateOperator` | `ru.jsonspecs.operators` | Interface for custom predicate operators |
+| `CheckResult` | `ru.jsonspecs.operators` | Result type returned by check operators |
+| `PredicateResult` | `ru.jsonspecs.operators` | Result type returned by predicate operators |
+| `OperatorContext` | `ru.jsonspecs.operators` | Context passed to operators at runtime |
+| `DeepGet` | `ru.jsonspecs.util` | Field lookup helper for custom operators |
 
 ### Internal (do not use directly)
 
 The following are implementation details and **may change without notice**:
 
-| Package                                    | Contains                                                                       |
-| ------------------------------------------ | ------------------------------------------------------------------------------ |
-| `ru.jsonspecs.compiler.*`                  | Compiler phases, compiled artifact types, `WhenExpr`, `Compiled`               |
-| `ru.jsonspecs.Runner`                      | Runtime execution (package-private; accessed only via `Engine`)                |
-| `ru.jsonspecs.operators.StandardOperators` | Built-in operator implementations                                              |
-| `ru.jsonspecs.util.*`                      | Internal utilities (`PayloadFlattener`, `WildcardExpander`, `ValueComparator`) |
+| Package | Contains |
+|---|---|
+| `ru.jsonspecs.compiler.*` | Compiler phases, compiled artifact types, `WhenExpr`, `Compiled` |
+| `ru.jsonspecs.Runner` | Runtime execution (package-private; accessed only via `Engine`) |
+| `ru.jsonspecs.operators.StandardOperators` | Built-in operator implementations |
+| `ru.jsonspecs.util.*` | Internal utilities (`PayloadFlattener`, `WildcardExpander`, `ValueComparator`) |
 
 If you find yourself needing to import anything from these packages, open an issue — it likely indicates a missing public API.
 
@@ -409,26 +405,26 @@ If you find yourself needing to import anything from these packages, open an iss
 
 ## Built-in operators
 
-| Operator                            | Description                                                         |
-| ----------------------------------- | ------------------------------------------------------------------- |
-| `not_empty`                         | Field must not be null/empty string                                 |
-| `is_empty`                          | Field must be null or empty                                         |
-| `equals`                            | Field equals `value`                                                |
-| `not_equals`                        | Field does not equal `value`                                        |
-| `contains`                          | String field contains `value`                                       |
-| `matches_regex`                     | Field matches regex `value`; optional `flags` (`"i"`, `"m"`, `"s"`) |
-| `greater_than`                      | Field > `value` (numeric or ISO date)                               |
-| `less_than`                         | Field < `value` (numeric or ISO date)                               |
-| `length_equals`                     | String length equals `value`                                        |
-| `length_max`                        | String length ≤ `value`                                             |
-| `in_dictionary`                     | Field value is in dictionary `values` array                         |
-| `any_filled`                        | At least one of `fields[]` is non-empty                             |
-| `field_equals_field`                | Two fields are equal                                                |
-| `field_not_equals_field`            | Two fields differ                                                   |
-| `field_greater_than_field`          | `field` > `value_field`                                             |
-| `field_less_than_field`             | `field` < `value_field`                                             |
-| `field_greater_or_equal_than_field` | `field` ≥ `value_field`                                             |
-| `field_less_or_equal_than_field`    | `field` ≤ `value_field`                                             |
+| Operator | Description |
+|---|---|
+| `not_empty` | Field must not be null/empty string |
+| `is_empty` | Field must be null or empty |
+| `equals` | Field equals `value` |
+| `not_equals` | Field does not equal `value` |
+| `contains` | String field contains `value` |
+| `matches_regex` | Field matches regex `value`; optional `flags` (`"i"`, `"m"`, `"s"`) |
+| `greater_than` | Field > `value` (numeric or ISO date) |
+| `less_than` | Field < `value` (numeric or ISO date) |
+| `length_equals` | String length equals `value` |
+| `length_max` | String length ≤ `value` |
+| `in_dictionary` | Field value is in dictionary `values` array |
+| `any_filled` | At least one of `fields[]` is non-empty |
+| `field_equals_field` | Two fields are equal |
+| `field_not_equals_field` | Two fields differ |
+| `field_greater_than_field` | `field` > `value_field` |
+| `field_less_than_field` | `field` < `value_field` |
+| `field_greater_or_equal_than_field` | `field` ≥ `value_field` |
+| `field_less_or_equal_than_field` | `field` ≤ `value_field` |
 
 All operators are also available as predicates (same name, predicate semantics, for use in `condition.when`).
 

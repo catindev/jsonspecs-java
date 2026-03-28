@@ -16,6 +16,10 @@ import java.util.regex.Pattern;
  *
  * <p>Example: pattern {@code "items[*].name"} matches keys
  * {@code "items[0].name"}, {@code "items[1].name"}, ... sorted by index.
+ *
+ * <p><b>Internal API.</b> This class is an implementation detail of the jsonspecs engine.
+ * It is not part of the stable public API and may change without notice between versions.
+ * Use {@link ru.jsonspecs.Engine} as the only entry point.
  */
 public final class WildcardExpander {
 

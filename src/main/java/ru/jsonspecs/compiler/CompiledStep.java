@@ -3,7 +3,11 @@ package ru.jsonspecs.compiler;
 import java.util.List;
 import java.util.Map;
 
-/** A resolved step in a compiled pipeline or condition. */
+/** A resolved step in a compiled pipeline or condition. *
+ * <p><b>Internal API.</b> This class is an implementation detail of the jsonspecs engine.
+ * It is not part of the stable public API and may change without notice between versions.
+ * Use {@link ru.jsonspecs.Engine} as the only entry point.
+ */
 public sealed interface CompiledStep
     permits CompiledStep.RuleStep, CompiledStep.PipelineStep, CompiledStep.ConditionStep {
 

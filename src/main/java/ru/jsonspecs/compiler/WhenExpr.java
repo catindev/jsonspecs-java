@@ -12,6 +12,10 @@ import java.util.Map;
  *   "when": { "all": ["a", "b"] }           → All([Single("a"), Single("b")])
  *   "when": { "any": ["a", { "all": ... }]} → Any([...])
  * </pre>
+ *
+ * <p><b>Internal API.</b> This class is an implementation detail of the jsonspecs engine.
+ * It is not part of the stable public API and may change without notice between versions.
+ * Use {@link ru.jsonspecs.Engine} as the only entry point.
  */
 public sealed interface WhenExpr
     permits WhenExpr.Single, WhenExpr.All, WhenExpr.Any {
