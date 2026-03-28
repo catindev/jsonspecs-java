@@ -5,17 +5,14 @@
          https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>io.jsonspecs</groupId>
-  <artifactId>jsonspecs-java</artifactId>
+  <groupId>ru.jsonspecs</groupId>
+  <artifactId>jsonspecs</artifactId>
   <version>1.0.0</version>
   <packaging>jar</packaging>
 
-  <name>jsonspecs-java</name>
-  <description>
-    Java runtime for jsonspecs: composable validation pipelines powered by JSON rules.
-    Zero production dependencies. Mirrors the jsonspecs npm package semantics.
-  </description>
-  <url>https://github.com/catindev/jsonspecs-java</url>
+  <name>jsonspecs</name>
+  <description>Java runtime for jsonspecs: composable validation pipelines powered by JSON rules. Zero production dependencies.</description>
+  <url>https://github.com/catindev/jsonspecs</url>
 
   <licenses>
     <license>
@@ -32,14 +29,14 @@
   </developers>
 
   <scm>
-    <connection>scm:git:https://github.com/catindev/jsonspecs-java.git</connection>
-    <developerConnection>scm:git:https://github.com/catindev/jsonspecs-java.git</developerConnection>
-    <url>https://github.com/catindev/jsonspecs-java</url>
+    <connection>scm:git:https://github.com/catindev/jsonspecs.git</connection>
+    <developerConnection>scm:git:https://github.com/catindev/jsonspecs.git</developerConnection>
+    <url>https://github.com/catindev/jsonspecs</url>
   </scm>
 
   <issueManagement>
     <system>GitHub</system>
-    <url>https://github.com/catindev/jsonspecs-java/issues</url>
+    <url>https://github.com/catindev/jsonspecs/issues</url>
   </issueManagement>
 
   <properties>
@@ -93,7 +90,7 @@
         <configuration>
           <archive>
             <manifestEntries>
-              <Automatic-Module-Name>io.jsonspecs</Automatic-Module-Name>
+              <Automatic-Module-Name>ru.jsonspecs</Automatic-Module-Name>
             </manifestEntries>
           </archive>
         </configuration>
@@ -142,7 +139,7 @@
               <rules>
                 <requireJavaVersion>
                   <version>[21,)</version>
-                  <message>jsonspecs-java requires Java 21 or later.</message>
+                  <message>jsonspecs requires Java 21 or later.</message>
                 </requireJavaVersion>
                 <requireMavenVersion>
                   <version>[3.8,)</version>

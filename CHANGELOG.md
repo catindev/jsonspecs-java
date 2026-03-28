@@ -61,7 +61,7 @@ Stable and covered by semver: `Engine`, `CompilationException`, `Issue`, `Pipeli
 
 - Java 21+ required (`maven.compiler.release = 21`)
 - `maven-enforcer-plugin` — fails if Java < 21 or Maven < 3.8
-- `Automatic-Module-Name: io.jsonspecs` in JAR manifest for JPMS
+- `Automatic-Module-Name: ru.jsonspecs` in JAR manifest for JPMS
 - Sources JAR and Javadoc JAR included in release artifacts
 
 ### npm/Java compatibility
