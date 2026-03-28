@@ -54,7 +54,7 @@ class EngineTest {
     @Test void compile_duplicateId_throws() {
         var r = rule("library.r", "not_empty", "x", "ERROR", "X");
         var ex = assertThrows(CompilationException.class, () -> engine.compile(List.of(r, r)));
-        assertTrue(ex.errors().stream().anyMatch(s -> s.contains("Duplicate artifact id")));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("Duplicate artifact id")));
         assertFalse(ex.getMessage().isBlank());
     }
 
@@ -62,9 +62,9 @@ class EngineTest {
         var bad = new LinkedHashMap<>(rule("library.r", "not_empty", "x", "ERROR", "X"));
         bad.remove("level"); bad.remove("code"); bad.remove("message");
         var ex = assertThrows(CompilationException.class, () -> engine.compile(List.of(bad)));
-        assertTrue(ex.errors().stream().anyMatch(s -> s.contains("level")));
-        assertTrue(ex.errors().stream().anyMatch(s -> s.contains("code")));
-        assertTrue(ex.errors().stream().anyMatch(s -> s.contains("message")));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("level")));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("code")));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("message")));
     }
 
     @Test void compile_duplicateErrorCode_throws() {
@@ -72,20 +72,20 @@ class EngineTest {
         var r2 = rule("library.r2", "not_empty", "b", "ERROR", "SAME");
         var p  = pipeline("p", List.of(step("rule", "library.r1"), step("rule", "library.r2")));
         var ex = assertThrows(CompilationException.class, () -> engine.compile(List.of(r1, r2, p)));
-        assertTrue(ex.errors().stream().anyMatch(s -> s.contains("SAME")));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("SAME")));
     }
 
     @Test void compile_unresolvedRef_throws() {
         var p = pipeline("p", List.of(step("rule", "library.does.not.exist")));
         var ex = assertThrows(CompilationException.class, () -> engine.compile(List.of(p)));
-        assertTrue(ex.errors().stream().anyMatch(s -> s.contains("library.does.not.exist")));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("library.does.not.exist")));
     }
 
     @Test void compile_invalidRegex_caughtAtCompileTime() {
         var r = rule("library.r", "matches_regex", "x", "ERROR", "X", "value", "[invalid(");
         var p = pipeline("p", List.of(step("rule", "library.r")));
         var ex = assertThrows(CompilationException.class, () -> engine.compile(List.of(r, p)));
-        assertTrue(ex.errors().stream().anyMatch(s -> s.contains("invalid regex")));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("invalid regex")));
     }
 
     @Test void compile_validRegex_ok() {
@@ -100,7 +100,7 @@ class EngineTest {
         var pB = Map.of("id","pipe.b","type","pipeline","description","b",
                          "entrypoint",false,"strict",false,"flow",List.of(step("pipeline","pipe.a")));
         var ex = assertThrows(CompilationException.class, () -> engine.compile(List.of(pA, pB)));
-        assertTrue(ex.errors().stream().anyMatch(s -> s.toLowerCase().contains("cycle")));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.toLowerCase().contains("cycle")));
     }
 
     // ── runner: status values ─────────────────────────────────────────────────
@@ -286,7 +286,7 @@ class EngineTest {
         var bad = new LinkedHashMap<>(rule("library.r","not_empty","x","ERROR","X"));
         bad.remove("level"); bad.remove("code"); bad.remove("message");
         var ex = assertThrows(CompilationException.class, () -> engine.compile(List.of(bad)));
-        assertFalse(ex.errors().isEmpty());
+        assertFalse(ex.getErrors().isEmpty());
         assertTrue(ex.getMessage().contains("Compilation failed"));
     }
 
