@@ -7,12 +7,12 @@
 
   <groupId>ru.jsonspecs</groupId>
   <artifactId>jsonspecs</artifactId>
-  <version>1.1.0</version>
+  <version>1.1.1</version>
   <packaging>jar</packaging>
 
   <name>jsonspecs</name>
-  <description>Java runtime for jsonspecs: composable validation pipelines powered by JSON rules. Zero production dependencies.</description>
-  <url>https://github.com/catindev/jsonspecs</url>
+  <description>Java runtime for jsonspecs: composable validation pipelines powered by JSON rules</description>
+  <url>https://github.com/catindev/jsonspecs-java</url>
 
   <licenses>
     <license>
@@ -29,15 +29,23 @@
   </developers>
 
   <scm>
-    <connection>scm:git:https://github.com/catindev/jsonspecs.git</connection>
-    <developerConnection>scm:git:https://github.com/catindev/jsonspecs.git</developerConnection>
-    <url>https://github.com/catindev/jsonspecs</url>
+    <connection>scm:git:https://github.com/catindev/jsonspecs-java.git</connection>
+    <developerConnection>scm:git:https://github.com/catindev/jsonspecs-java.git</developerConnection>
+    <url>https://github.com/catindev/jsonspecs-java</url>
   </scm>
 
   <issueManagement>
     <system>GitHub</system>
-    <url>https://github.com/catindev/jsonspecs/issues</url>
+    <url>https://github.com/catindev/jsonspecs-java/issues</url>
   </issueManagement>
+
+
+  <distributionManagement>
+    <repository>
+      <id>central</id>
+      <url>https://central.sonatype.com/</url>
+    </repository>
+  </distributionManagement>
 
   <properties>
     <!-- Use release instead of source+target — catches cross-compilation errors -->
@@ -152,4 +160,49 @@
 
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>release-sign</id>
+      <build>
+        <plugins>
+
+          <!-- GPG signing (required by Maven Central) -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.2.4</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals><goal>sign</goal></goals>
+                <configuration>
+                  <gpgArguments>
+                    <arg>--pinentry-mode</arg>
+                    <arg>loopback</arg>
+                  </gpgArguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+
+          <!-- Publish to Maven Central via new Central Portal -->
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>0.5.0</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <!-- autoPublish: skips manual confirmation on portal.central.sonatype.com -->
+              <autoPublish>true</autoPublish>
+            </configuration>
+          </plugin>
+
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
 </project>
