@@ -386,7 +386,7 @@ class EngineTest {
 
     @Test void run_strictNestedPipeline_escalatesToException() {
         var inner = Map.of(
-            "id","inner","type","pipeline","description","inner",
+            "id","internal.inner","type","pipeline","description","inner",
             "entrypoint",false,"strict",true,
             "message","Inner checks failed","strictCode","INNER.STRICT",
             "flow", List.of(step("rule","library.r_err")));
@@ -394,7 +394,7 @@ class EngineTest {
             "id","outer","type","pipeline","description","outer",
             "entrypoint",true,"strict",false,
             "flow", List.of(
-                step("pipeline","inner"),
+                step("pipeline","internal.inner"),
                 Map.of("rule","library.r_after")));
         var rErr   = rule("library.r_err",   "not_empty","required","ERROR","REQ.MISSING");
         var rAfter = rule("library.r_after","not_empty","other","ERROR","OTHER.MISSING");
@@ -410,14 +410,14 @@ class EngineTest {
     @Test void run_strictNestedPipeline_errorIssuesTrigger_notJustStop() {
         // strict should fire when there are ERROR issues, even if no EXCEPTION-level rule triggered STOP
         var inner = Map.of(
-            "id","inner","type","pipeline","description","inner",
+            "id","internal.inner","type","pipeline","description","inner",
             "entrypoint",false,"strict",true,
             "message","Strict","strictCode","STRICT",
             "flow", List.of(step("rule","library.r_err")));
         var outer = Map.of(
             "id","outer","type","pipeline","description","outer",
             "entrypoint",true,"strict",false,
-            "flow", List.of(step("pipeline","inner")));
+            "flow", List.of(step("pipeline","internal.inner")));
         var rErr = rule("library.r_err","not_empty","x","ERROR","X.ERR");
         var compiled = engine.compile(List.of(rErr, inner, outer));
 
@@ -685,12 +685,12 @@ class EngineTest {
 
     @Test void trace_containsNestedPipelineEnterExit() {
         var r = rule("library.r","not_empty","x","ERROR","X");
-        var inner = Map.of("id","inner","type","pipeline","description","i",
+        var inner = Map.of("id","internal.inner","type","pipeline","description","i",
                             "entrypoint",false,"strict",false,
                             "flow",List.of(step("rule","library.r")));
         var outer = Map.of("id","outer","type","pipeline","description","o",
                             "entrypoint",true,"strict",false,
-                            "flow",List.of(step("pipeline","inner")));
+                            "flow",List.of(step("pipeline","internal.inner")));
         var compiled = engine.compile(List.of(r, inner, outer));
         var result = engine.runPipeline(compiled,"outer",Map.of("x","v"));
         var msgs = result.getTrace().stream().map(TraceEntry::getMessage).toList();
@@ -726,13 +726,13 @@ class EngineTest {
     @Test void trace_containsStrictBoundary() {
         var r = rule("library.r_err","not_empty","required","ERROR","REQ.MISSING");
         var inner = new LinkedHashMap<String,Object>();
-        inner.put("id","inner"); inner.put("type","pipeline"); inner.put("description","i");
+        inner.put("id","internal.inner"); inner.put("type","pipeline"); inner.put("description","i");
         inner.put("entrypoint",false); inner.put("strict",true);
         inner.put("message","Inner failed"); inner.put("strictCode","INNER.STRICT");
         inner.put("flow", List.of(step("rule","library.r_err")));
         var outer = Map.of("id","outer","type","pipeline","description","o",
                             "entrypoint",true,"strict",false,
-                            "flow",List.of(step("pipeline","inner")));
+                            "flow",List.of(step("pipeline","internal.inner")));
         var compiled = engine.compile(List.of(r, inner, outer));
         var result = engine.runPipeline(compiled,"outer",Map.of());
         assertTrue(result.getTrace().stream()
