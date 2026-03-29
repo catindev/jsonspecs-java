@@ -1,29 +1,18 @@
 package ru.jsonspecs.operators;
 
-import ru.jsonspecs.util.DeepGet;
+import ru.jsonspecs.util.RegexFlags;
 import ru.jsonspecs.util.ValueComparator;
-import ru.jsonspecs.util.WildcardExpander;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 /**
  * Built-in operator pack. Registered via {@link OperatorPack#standard()}.
  *
- * <p>Each operator follows the contract:
- * <ul>
- *   <li>Read {@code rule.get("field")} for the target field path</li>
- *   <li>Use {@code ctx.get(field)} to fetch the value from the flat payload</li>
- *   <li>Return {@link CheckResult#ok()} or {@link CheckResult#fail(Object)}</li>
- *   <li>Wrap unexpected errors in {@link CheckResult#exception(Throwable)}</li>
- * </ul>
- *
- * <p><b>Internal API.</b> This class is an implementation detail of the jsonspecs engine.
- * It is not part of the stable public API and may change without notice between versions.
- * Use {@link ru.jsonspecs.Engine} as the only entry point.
+ * <p><b>Internal API.</b>
  */
 public final class StandardOperators {
 
@@ -55,9 +44,8 @@ public final class StandardOperators {
             try {
                 var r = ctx.get(field(rule));
                 if (!r.ok()) return CheckResult.fail();
-                Object expected = rule.get("value");
-                boolean match = looseEquals(r.value(), expected);
-                return match ? CheckResult.ok() : CheckResult.fail(r.value());
+                return strictEquals(r.value(), rule.get("value"))
+                    ? CheckResult.ok() : CheckResult.fail(r.value());
             } catch (Exception e) { return CheckResult.exception(e); }
         });
 
@@ -65,9 +53,8 @@ public final class StandardOperators {
             try {
                 var r = ctx.get(field(rule));
                 if (!r.ok()) return CheckResult.fail();
-                Object expected = rule.get("value");
-                boolean match = looseEquals(r.value(), expected);
-                return match ? CheckResult.fail(r.value()) : CheckResult.ok();
+                return strictEquals(r.value(), rule.get("value"))
+                    ? CheckResult.fail(r.value()) : CheckResult.ok();
             } catch (Exception e) { return CheckResult.exception(e); }
         });
 
@@ -75,8 +62,7 @@ public final class StandardOperators {
             try {
                 var r = ctx.get(field(rule));
                 if (!r.ok()) return CheckResult.fail();
-                String s = str(r.value());
-                String sub = str(rule.get("value"));
+                String s = str(r.value()), sub = str(rule.get("value"));
                 return s.contains(sub) ? CheckResult.ok() : CheckResult.fail(s);
             } catch (Exception e) { return CheckResult.exception(e); }
         });
@@ -85,11 +71,10 @@ public final class StandardOperators {
             try {
                 var r = ctx.get(field(rule));
                 if (!r.ok()) return CheckResult.fail();
-                String s       = str(r.value());
-                String pattern = str(rule.get("value"));
-                String flags   = rule.get("flags") instanceof String f ? f : "";
-                // Pattern is pre-compiled at compile time; re-compile here is safe (cached by JVM)
-                Pattern re = flags.isEmpty() ? Pattern.compile(pattern) : Pattern.compile(pattern, parseFlags(flags));
+                String s = str(r.value()), pattern = str(rule.get("value"));
+                String flags = rule.get("flags") instanceof String f ? f : "";
+                Pattern re = flags.isEmpty() ? Pattern.compile(pattern)
+                    : Pattern.compile(pattern, RegexFlags.parse(flags));
                 return re.matcher(s).find() ? CheckResult.ok() : CheckResult.fail(s);
             } catch (Exception e) { return CheckResult.exception(e); }
         });
@@ -116,34 +101,36 @@ public final class StandardOperators {
             try {
                 var r = ctx.get(field(rule));
                 if (!r.ok()) return CheckResult.fail();
-                int len = str(r.value()).length();
-                int expected = toInt(rule.get("value"));
+                int len = str(r.value()).length(), expected = toInt(rule.get("value"));
                 return len == expected ? CheckResult.ok() : CheckResult.fail(len);
             } catch (Exception e) { return CheckResult.exception(e); }
         });
 
+        // FIX: absent field → FAIL (was incorrectly OK)
         check.put("length_max", (rule, ctx) -> {
             try {
                 var r = ctx.get(field(rule));
-                if (!r.ok()) return CheckResult.ok();
-                int len = str(r.value()).length();
-                int max = toInt(rule.get("value"));
+                if (!r.ok()) return CheckResult.fail();
+                int len = str(r.value()).length(), max = toInt(rule.get("value"));
                 return len <= max ? CheckResult.ok() : CheckResult.fail(len);
             } catch (Exception e) { return CheckResult.exception(e); }
         });
 
+        // FIX: dictionary is {type,id} object; entries key (not values); object entry formats
         check.put("in_dictionary", (rule, ctx) -> {
             try {
                 var r = ctx.get(field(rule));
                 if (!r.ok()) return CheckResult.fail();
-                String dictId = str(rule.get("dictionary"));
-                Map<String, Object> dict = ctx.dictionaries().get(dictId);
-                if (dict == null) return CheckResult.exception(new IllegalStateException("Dictionary not found: " + dictId));
+                String dictId = resolveDictId(rule);
+                Map<String, Object> dict = ctx.getDictionary(dictId);
+                if (dict == null)
+                    return CheckResult.exception(new IllegalStateException("Dictionary not found: " + dictId));
                 @SuppressWarnings("unchecked")
-                List<Object> values = (List<Object>) dict.get("values");
-                if (values == null) return CheckResult.exception(new IllegalStateException("Dictionary has no 'values': " + dictId));
-                boolean found = values.stream().anyMatch(v -> looseEquals(v, r.value()));
-                return found ? CheckResult.ok() : CheckResult.fail(r.value());
+                List<Object> entries = (List<Object>) dict.get("entries");
+                if (entries == null)
+                    return CheckResult.exception(new IllegalStateException("Dictionary has no 'entries': " + dictId));
+                return entries.stream().anyMatch(e -> matchEntry(e, r.value()))
+                    ? CheckResult.ok() : CheckResult.fail(r.value());
             } catch (Exception e) { return CheckResult.exception(e); }
         });
 
@@ -152,11 +139,12 @@ public final class StandardOperators {
                 @SuppressWarnings("unchecked")
                 List<String> fields = rule.get("fields") instanceof List<?> l
                     ? (List<String>) l : List.of();
-                if (fields.isEmpty()) return CheckResult.exception(
-                    new IllegalArgumentException("any_filled requires 'fields' array"));
+                if (fields.isEmpty())
+                    return CheckResult.exception(
+                        new IllegalArgumentException("any_filled requires 'fields' array"));
                 boolean ok = fields.stream().anyMatch(f -> {
-                    var r = ctx.get(f);
-                    return r.ok() && !isEmpty(r.value());
+                    var res = ctx.get(f);
+                    return res.ok() && !isEmpty(res.value());
                 });
                 return ok ? CheckResult.ok() : CheckResult.fail();
             } catch (Exception e) { return CheckResult.exception(e); }
@@ -164,14 +152,14 @@ public final class StandardOperators {
 
         // ── field vs field checks ─────────────────────────────────────────────
 
-        check.put("field_equals_field", (rule, ctx) -> fieldCompare(rule, ctx, cmp -> cmp == 0));
-        check.put("field_not_equals_field", (rule, ctx) -> fieldCompare(rule, ctx, cmp -> cmp != 0));
-        check.put("field_greater_than_field", (rule, ctx) -> fieldCompare(rule, ctx, cmp -> cmp > 0));
-        check.put("field_less_than_field", (rule, ctx) -> fieldCompare(rule, ctx, cmp -> cmp < 0));
+        check.put("field_equals_field",                (rule, ctx) -> fieldCompare(rule, ctx, cmp -> cmp == 0));
+        check.put("field_not_equals_field",            (rule, ctx) -> fieldCompare(rule, ctx, cmp -> cmp != 0));
+        check.put("field_greater_than_field",          (rule, ctx) -> fieldCompare(rule, ctx, cmp -> cmp > 0));
+        check.put("field_less_than_field",             (rule, ctx) -> fieldCompare(rule, ctx, cmp -> cmp < 0));
         check.put("field_greater_or_equal_than_field", (rule, ctx) -> fieldCompare(rule, ctx, cmp -> cmp >= 0));
-        check.put("field_less_or_equal_than_field", (rule, ctx) -> fieldCompare(rule, ctx, cmp -> cmp <= 0));
+        check.put("field_less_or_equal_than_field",    (rule, ctx) -> fieldCompare(rule, ctx, cmp -> cmp <= 0));
 
-        // ── predicates (mirror of checks, returning PredicateResult) ─────────
+        // ── predicates ────────────────────────────────────────────────────────
 
         predicate.put("not_empty", (rule, ctx) -> {
             try {
@@ -191,7 +179,8 @@ public final class StandardOperators {
             try {
                 var r = ctx.get(field(rule));
                 if (!r.ok()) return PredicateResult.UNDEFINED;
-                return looseEquals(r.value(), rule.get("value")) ? PredicateResult.TRUE : PredicateResult.FALSE;
+                return strictEquals(r.value(), rule.get("value"))
+                    ? PredicateResult.TRUE : PredicateResult.FALSE;
             } catch (Exception e) { return PredicateResult.exception(e); }
         });
 
@@ -199,7 +188,8 @@ public final class StandardOperators {
             try {
                 var r = ctx.get(field(rule));
                 if (!r.ok()) return PredicateResult.UNDEFINED;
-                return !looseEquals(r.value(), rule.get("value")) ? PredicateResult.TRUE : PredicateResult.FALSE;
+                return !strictEquals(r.value(), rule.get("value"))
+                    ? PredicateResult.TRUE : PredicateResult.FALSE;
             } catch (Exception e) { return PredicateResult.exception(e); }
         });
 
@@ -207,7 +197,8 @@ public final class StandardOperators {
             try {
                 var r = ctx.get(field(rule));
                 if (!r.ok()) return PredicateResult.FALSE;
-                return str(r.value()).contains(str(rule.get("value"))) ? PredicateResult.TRUE : PredicateResult.FALSE;
+                return str(r.value()).contains(str(rule.get("value")))
+                    ? PredicateResult.TRUE : PredicateResult.FALSE;
             } catch (Exception e) { return PredicateResult.exception(e); }
         });
 
@@ -216,9 +207,11 @@ public final class StandardOperators {
                 var r = ctx.get(field(rule));
                 if (!r.ok()) return PredicateResult.FALSE;
                 String pattern = str(rule.get("value"));
-                String flags   = rule.get("flags") instanceof String f ? f : "";
-                Pattern re = flags.isEmpty() ? Pattern.compile(pattern) : Pattern.compile(pattern, parseFlags(flags));
-                return re.matcher(str(r.value())).find() ? PredicateResult.TRUE : PredicateResult.FALSE;
+                String flags = rule.get("flags") instanceof String f ? f : "";
+                Pattern re = flags.isEmpty() ? Pattern.compile(pattern)
+                    : Pattern.compile(pattern, RegexFlags.parse(flags));
+                return re.matcher(str(r.value())).find()
+                    ? PredicateResult.TRUE : PredicateResult.FALSE;
             } catch (Exception e) { return PredicateResult.exception(e); }
         });
 
@@ -240,52 +233,54 @@ public final class StandardOperators {
             } catch (Exception e) { return PredicateResult.exception(e); }
         });
 
+        // FIX: uses resolveDictId + entries + matchEntry
         predicate.put("in_dictionary", (rule, ctx) -> {
             try {
                 var r = ctx.get(field(rule));
                 if (!r.ok()) return PredicateResult.FALSE;
-                String dictId = str(rule.get("dictionary"));
-                Map<String, Object> dict = ctx.dictionaries().get(dictId);
-                if (dict == null) return PredicateResult.exception(new IllegalStateException("Dictionary not found: " + dictId));
+                String dictId = resolveDictId(rule);
+                Map<String, Object> dict = ctx.getDictionary(dictId);
+                if (dict == null)
+                    return PredicateResult.exception(new IllegalStateException("Dictionary not found: " + dictId));
                 @SuppressWarnings("unchecked")
-                List<Object> values = (List<Object>) dict.get("values");
-                boolean found = values != null && values.stream().anyMatch(v -> looseEquals(v, r.value()));
+                List<Object> entries = (List<Object>) dict.get("entries");
+                boolean found = entries != null && entries.stream().anyMatch(e -> matchEntry(e, r.value()));
                 return found ? PredicateResult.TRUE : PredicateResult.FALSE;
             } catch (Exception e) { return PredicateResult.exception(e); }
         });
 
         predicate.put("field_equals_field", (rule, ctx) -> {
             try {
-                var l = ctx.get(field(rule)); var r2 = ctx.get(str(rule.get("value_field")));
-                if (!l.ok() || !r2.ok()) return PredicateResult.UNDEFINED;
-                Integer cmp = ValueComparator.compare(l.value(), r2.value());
+                var l = ctx.get(field(rule)); var rv = ctx.get(str(rule.get("value_field")));
+                if (!l.ok() || !rv.ok()) return PredicateResult.UNDEFINED;
+                Integer cmp = ValueComparator.compare(l.value(), rv.value());
                 return cmp != null && cmp == 0 ? PredicateResult.TRUE : PredicateResult.FALSE;
             } catch (Exception e) { return PredicateResult.exception(e); }
         });
 
         predicate.put("field_not_equals_field", (rule, ctx) -> {
             try {
-                var l = ctx.get(field(rule)); var r2 = ctx.get(str(rule.get("value_field")));
-                if (!l.ok() || !r2.ok()) return PredicateResult.UNDEFINED;
-                Integer cmp = ValueComparator.compare(l.value(), r2.value());
+                var l = ctx.get(field(rule)); var rv = ctx.get(str(rule.get("value_field")));
+                if (!l.ok() || !rv.ok()) return PredicateResult.UNDEFINED;
+                Integer cmp = ValueComparator.compare(l.value(), rv.value());
                 return cmp != null && cmp != 0 ? PredicateResult.TRUE : PredicateResult.FALSE;
             } catch (Exception e) { return PredicateResult.exception(e); }
         });
 
         predicate.put("field_greater_or_equal_than_field", (rule, ctx) -> {
             try {
-                var l = ctx.get(field(rule)); var r2 = ctx.get(str(rule.get("value_field")));
-                if (!l.ok() || !r2.ok()) return PredicateResult.UNDEFINED;
-                Integer cmp = ValueComparator.compare(l.value(), r2.value());
+                var l = ctx.get(field(rule)); var rv = ctx.get(str(rule.get("value_field")));
+                if (!l.ok() || !rv.ok()) return PredicateResult.UNDEFINED;
+                Integer cmp = ValueComparator.compare(l.value(), rv.value());
                 return cmp != null && cmp >= 0 ? PredicateResult.TRUE : PredicateResult.FALSE;
             } catch (Exception e) { return PredicateResult.exception(e); }
         });
 
         predicate.put("field_less_or_equal_than_field", (rule, ctx) -> {
             try {
-                var l = ctx.get(field(rule)); var r2 = ctx.get(str(rule.get("value_field")));
-                if (!l.ok() || !r2.ok()) return PredicateResult.UNDEFINED;
-                Integer cmp = ValueComparator.compare(l.value(), r2.value());
+                var l = ctx.get(field(rule)); var rv = ctx.get(str(rule.get("value_field")));
+                if (!l.ok() || !rv.ok()) return PredicateResult.UNDEFINED;
+                Integer cmp = ValueComparator.compare(l.value(), rv.value());
                 return cmp != null && cmp <= 0 ? PredicateResult.TRUE : PredicateResult.FALSE;
             } catch (Exception e) { return PredicateResult.exception(e); }
         });
@@ -295,34 +290,62 @@ public final class StandardOperators {
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    private static String field(Map<String, Object> rule) {
-        return str(rule.get("field"));
+    private static String field(Map<String, Object> rule) { return str(rule.get("field")); }
+
+    /**
+     * Extract dictionary id from rule's {@code "dictionary"} field.
+     * Canonical form: {@code {"type":"static","id":"currencies"}}.
+     * Also accepts plain string id as fallback.
+     */
+    @SuppressWarnings("unchecked")
+    private static String resolveDictId(Map<String, Object> rule) {
+        Object raw = rule.get("dictionary");
+        if (raw instanceof Map<?, ?> m) return str(((Map<String, Object>) m).get("id"));
+        return str(raw);
     }
 
-    static String str(Object v) {
-        return v == null ? "" : String.valueOf(v);
+    /**
+     * Match a dictionary entry against a field value.
+     * Supports three entry forms: plain scalar, {@code {"code":...}}, {@code {"value":...}}.
+     */
+    @SuppressWarnings("unchecked")
+    static boolean matchEntry(Object entry, Object value) {
+        if (entry instanceof Map<?, ?> m) {
+            var em = (Map<String, Object>) m;
+            if (em.containsKey("code"))  return strictEquals(em.get("code"),  value);
+            if (em.containsKey("value")) return strictEquals(em.get("value"), value);
+            return false;
+        }
+        return strictEquals(entry, value);
     }
 
-    static boolean isEmpty(Object v) {
-        return v == null || "".equals(v);
-    }
+    static String str(Object v) { return v == null ? "" : String.valueOf(v); }
 
-    static boolean looseEquals(Object a, Object b) {
+    static boolean isEmpty(Object v) { return v == null || "".equals(v); }
+
+    /**
+     * Strict equality — mirrors JS {@code ===}:
+     * no string-to-number coercion, but cross-numeric-type comparison is supported
+     * ({@code Integer(1) == Long(1) == Double(1.0)}).
+     */
+    static boolean strictEquals(Object a, Object b) {
         if (a == null && b == null) return true;
         if (a == null || b == null) return false;
         if (a.equals(b)) return true;
-        // Compare as strings for mixed number/string cases
-        return String.valueOf(a).equals(String.valueOf(b));
+        if (a instanceof Number na && b instanceof Number nb)
+            return Double.compare(na.doubleValue(), nb.doubleValue()) == 0;
+        return false;
     }
 
     static int toInt(Object v) {
         if (v instanceof Number n) return n.intValue();
+        if (v == null) throw new IllegalArgumentException("Expected integer, got null");
         try { return Integer.parseInt(String.valueOf(v)); }
         catch (NumberFormatException e) { throw new IllegalArgumentException("Expected integer, got: " + v); }
     }
 
     private static CheckResult fieldCompare(Map<String, Object> rule, OperatorContext ctx,
-                                             java.util.function.Predicate<Integer> test) {
+                                             Predicate<Integer> test) {
         try {
             var l = ctx.get(field(rule));
             var r = ctx.get(str(rule.get("value_field")));
@@ -331,13 +354,5 @@ public final class StandardOperators {
             if (cmp == null) return CheckResult.fail(l.value());
             return test.test(cmp) ? CheckResult.ok() : CheckResult.fail(l.value());
         } catch (Exception e) { return CheckResult.exception(e); }
-    }
-
-    static int parseFlags(String flags) {
-        int f = 0;
-        if (flags.contains("i")) f |= Pattern.CASE_INSENSITIVE;
-        if (flags.contains("m")) f |= Pattern.MULTILINE;
-        if (flags.contains("s")) f |= Pattern.DOTALL;
-        return f;
     }
 }

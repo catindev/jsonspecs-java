@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/)
 
+## [1.1.2] - 2026-03-29
+
+### Changed
+
+- README приведён в соответствие с актуальной JS-линией `jsonspecs` `1.1.0`.
+- Исправлена таблица npm/Java compatibility: задокументированы актуальные wildcard aggregate modes для check и predicate.
+- Явно зафиксировано, что Node-линия остаётся источником истины для DSL и runtime semantics, а Java-линия является Java runtime для JSON DSL.
+- README дополнен разделом о стабильном публичном API и политике версионного соответствия Node/Java.
+
+### Added
+
+- Дополнительные parity-oriented tests на trace backbone, aggregate validation, required_context validation и immutable compiled snapshot.
+
+### Fixed
+
+- Исправлена структура `EngineTest.java`, чтобы весь набор регрессионных тестов находился внутри одного test class.
+
 ## [1.1.0] - 2026-03-28
 
 ### Added

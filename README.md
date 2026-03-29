@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Java 21+](https://img.shields.io/badge/Java-21%2B-blue)](https://openjdk.org/)
 
-Java-рантайм для [jsonspecs](https://www.npmjs.com/package/jsonspecs): декларативный движок валидационных правил..
+Java-рантайм для [jsonspecs](https://www.npmjs.com/package/jsonspecs): декларативный движок валидационных правил.
 
 Правила описываются в JSON-файлах. Движок компилирует их, запускает на любом payload и возвращает структурированный результат с уровнями `ERROR`, `WARNING` и `EXCEPTION`, полным списком issues и трассировкой выполнения.
 
@@ -15,26 +15,26 @@ Java-рантайм для [jsonspecs](https://www.npmjs.com/package/jsonspecs):
 <dependency>
   <groupId>ru.jsonspecs</groupId>
   <artifactId>jsonspecs</artifactId>
-  <version>1.1.1</version>
+  <version>1.1.2</version>
 </dependency>
 ```
 
 ## Что дает эта библиотека
 
 - Правила как обычные JSON-артефакты
-- Правила композизруются в сценарий проверки, компилируются один раз на запуске и каждая проверка выполняется в снэпшоте скомпилированных правил
+- Правила композируются в сценарий проверки, компилируются один раз на запуске и каждая проверка выполняется в снэпшоте скомпилированных правил
 - Структурированный результат вместо одного `true` и `false`
 - Семантика результатов `ERROR`, `WARNING`, `EXCEPTION` и `ABORT`
 - Условные блоки для опциональных проверок в зависимости от бизнес-контекста
 - Переиспользуемые проверки и сценарии проверок
-- Обращение к в ложенным полям элементов массива через `[*]`
+- Обращение к вложенным полям элементов массива через `[*]`
 - Runtime-контекст через `__context`
 - Тот же формат JSON-артефактов, что и в Node.js-пакете
 - Без runtime-зависимостей
 
 ## Как это работает
 
-Правила это отдельные JSON-файлы. Условия определяют, нужно ли запускать тот или иной блок проверок, но самой логики проверов не содержат. Сценарии проверок собирают правила и условия в один бизнес-сценарий.
+Правила это отдельные JSON-файлы. Условия определяют, нужно ли запускать тот или иной блок проверок, но самой логики проверок не содержат. Сценарии проверок собирают правила и условия в один бизнес-сценарий.
 
 Движок компилирует артефакты один раз, а потом запускает сценарии проверок на любом payload.
 
@@ -44,6 +44,8 @@ Java-рантайм для [jsonspecs](https://www.npmjs.com/package/jsonspecs):
 
 Один и тот же JSON-набор артефактов (`rule`, `condition`, `pipeline`, `dictionary`) работает на обоих рантаймах без изменений.
 
+Node-версия остаётся источником истины для DSL и runtime semantics. Java-версия — это **Java runtime для JSON DSL**, а не отдельный Java DSL с builders или собственной моделью правил. Java API может немного отличаться ради удобства Java-разработчиков, но входной snapshot и выходная семантика должны совпадать.
+
 ### Что гарантированно совпадает
 
 - Все типы артефактов: `rule`, `condition`, `pipeline`, `dictionary`
@@ -51,15 +53,42 @@ Java-рантайм для [jsonspecs](https://www.npmjs.com/package/jsonspecs):
 - Структура issue: `level`, `code`, `message`, `field`, `ruleId`, `expected`, `actual`
 - Статусы: `OK`, `OK_WITH_WARNINGS`, `ERROR`, `EXCEPTION`, `ABORT`
 - Обращение к полям элементов массива через wildcard-пути вроде `items[*].qty`
-- Режимы агрегации: `EACH`, `ALL`, `ANY`
+- Check aggregate modes: `EACH`, `ALL`, `COUNT`, `MIN`, `MAX`
+- Predicate aggregate modes: `ANY`, `ALL`, `COUNT`
+- `onEmpty` semantics для check и predicate wildcard-агрегации
 - Ссылки на `$context.*` через `__context` в payload
 - Флаги `matches_regex`, например `"i"`, `"m"`, `"s"`
-- Ошибки compile-time валидации: неверный regex, дубликаты кодов, неразрешенные ссылки и циклы в DAG
+- Ошибки compile-time валидации: неверный regex, дубликаты кодов, неразрешённые ссылки, циклы DAG, неверные `aggregate`/`required_context`/`dictionary.entries`
+- Контракт custom operators через `ctx.get(path)` / `ctx.has(path)` / `ctx.getDictionary(id)` / `ctx.payloadKeys()`
 
 ### Что не переносится между рантаймами
 
 - Объекты `CompiledRules` нужно собирать отдельно на каждой стороне
 - Кастомные операторы нужно реализовывать отдельно на каждом рантайме
+- Java API может отличаться от npm API по форме, если это делает использование библиотеки в Java более естественным
+
+### Версионное соответствие
+
+| Node runtime | Java runtime |
+| --- | --- |
+| `jsonspecs` `1.1.0` | `jsonspecs-java` `1.1.2` |
+
+Политика простая: Java-линия следует за Node-линией по семантике snapshot и runtime contract. При несовпадении документации и поведения источником истины считается текущая Node-спецификация, а Java-реализация должна быть приведена к ней.
+
+## Стабильный публичный API
+
+Под semver в Java-линии сейчас подпадают следующие вещи:
+
+- `Engine`, `CompiledRules`, `CompileOptions`, `RunOptions`
+- `PipelineResult`, `Issue`, `TraceEntry`, `CompilationException`
+- `OperatorPack`, `CheckOperator`, `PredicateOperator`, `CheckResult`, `PredicateResult`, `OperatorContext`, `DeepGet`
+- JSON snapshot format и его runtime semantics, совпадающие с Node-линией
+
+Не считаются публичным API и могут меняться без отдельного notice:
+
+- `ru.jsonspecs.compiler.*`
+- внутренняя форма compiled model
+- внутренние trace payload детали, если сохраняется общий trace backbone
 
 ## Быстрый старт
 
