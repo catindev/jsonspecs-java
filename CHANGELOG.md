@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/)
 
+## [1.2.0] - 2026-03-30
+
+### Fixed
+
+- Top-level `strict` pipeline semantics aligned with Node runtime parity: strict boundary escalation now works the same way for top-level and nested pipelines.
+- Compiler validation aligned with Node compile-time contract for `strictCode`, `any_filled`, field-to-field operators requiring `value_field`, `in_dictionary`, and `meta`.
+- Invalid DSL definitions that previously leaked into runtime and produced `ABORT` now fail earlier at compile time where Node already rejected them.
+
+### Changed
+
+- Removed Java-only non-canonical `in_dictionary` shortcut with string dictionary reference; Java now accepts only the canonical Node-compatible dictionary object form.
+- Added regression tests covering strict top-level escalation and compile-time parity for the previously divergent DSL cases.
+- Cleaned the source archive by removing compiled `out/` artifacts from the release package.
+- README wording softened where full parity is still being formalized through a dedicated cross-runtime suite.
+- Added a working minimal Node-vs-Java parity suite: `scripts/parity-check.sh`, runtime/compile-fail golden cases in `parity/`, and dedicated Node/Java harnesses for normalized result comparison.
+
 ## [1.1.2] - 2026-03-29
 
 ### Changed
@@ -44,8 +60,7 @@ Format: [Semantic Versioning](https://semver.org/)
 ## [1.0.0] - 2026-03-28
 
 Initial release. Java runtime for the [jsonspecs](https://www.npmjs.com/package/jsonspecs) rule engine.
-Implements the full SPEC semantics — JSON rule artifacts compiled and calibrated on the npm side
-run unchanged on the Java side.
+Targets Node semantic parity for JSON rule artifacts compiled and calibrated on the npm side. Cross-runtime parity is hardened incrementally and should be verified by the parity suite and release process.
 
 ### Engine
 
@@ -108,7 +123,5 @@ Not portable: compiled `Compiled` objects (compile separately per runtime).
 
 ### Tests
 
-- `EngineTest` — 21 tests covering compiler, runner, all status values,
-  conditions, wildcards, operators, trace toggle, custom operators
-- `ReadmeSmokeTest` — 2 integration tests that mirror the README quick start
-  exactly, ensuring documentation does not drift from the API
+- `EngineTest` — compiler, runner, status values, conditions, wildcards, operators, trace toggle, custom operators and later regressions
+- `ReadmeSmokeTest` — integration tests that mirror the README quick start and help keep the documentation aligned with the API

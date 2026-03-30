@@ -1,0 +1,11 @@
+[
+  {
+    "id": "p",
+    "type": "pipeline",
+    "description": "d",
+    "entrypoint": true,
+    "strict": true,
+    "strictCode": "",
+    "flow": []
+  }
+]

@@ -652,6 +652,89 @@ class EngineTest {
         assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("required_context")));
     }
 
+
+    @Test void compile_pipelineStrictCode_blank_throws() {
+        var r = rule("library.r", "not_empty", "x", "ERROR", "X");
+        var p = new LinkedHashMap<String,Object>();
+        p.put("id","p"); p.put("type","pipeline"); p.put("description","p");
+        p.put("entrypoint",true); p.put("strict",true); p.put("message","strict failed");
+        p.put("strictCode","   ");
+        p.put("flow", List.of(step("rule","library.r")));
+        var ex = assertThrows(CompilationException.class, () -> engine.compile(List.of(r, p)));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("strictCode must be non-empty string if provided")));
+    }
+
+    @Test void compile_anyFilled_withoutFields_throws() {
+        var r = rule("library.r", "any_filled", "ignored", "ERROR", "X");
+        var ex = assertThrows(CompilationException.class, () -> engine.compile(List.of(r)));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("any_filled requires fields[]")));
+    }
+
+    @Test void compile_fieldEqualsField_withoutValueField_throws() {
+        var r = rule("library.r", "field_equals_field", "left", "ERROR", "X");
+        var ex = assertThrows(CompilationException.class, () -> engine.compile(List.of(r)));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("field_equals_field requires value_field")));
+    }
+
+    @Test void compile_inDictionary_stringShortcut_throws() {
+        var dict = Map.of("id","currencies","type","dictionary","description","d",
+                           "entries", List.of("RUB","USD"));
+        var r = rule("library.r", "in_dictionary", "currency", "ERROR", "X",
+                     "dictionary", "currencies");
+        var ex = assertThrows(CompilationException.class, () -> engine.compile(List.of(dict, r)));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("in_dictionary requires dictionary{type:static,id}")));
+    }
+
+    @Test void compile_inDictionary_missingDictionary_throws() {
+        var r = rule("library.r", "in_dictionary", "currency", "ERROR", "X",
+                     "dictionary", Map.of("type","static","id","missing"));
+        var ex = assertThrows(CompilationException.class, () -> engine.compile(List.of(r)));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("dictionary not found: missing")));
+    }
+
+    @Test void compile_meta_nonObject_throws() {
+        var r = rule("library.r", "equals", "x", "ERROR", "X", "value", 1, "meta", "oops");
+        var ex = assertThrows(CompilationException.class, () -> engine.compile(List.of(r)));
+        assertTrue(ex.getErrors().stream().anyMatch(s -> s.contains("meta must be an object if provided")));
+    }
+
+    @Test void run_strictTopLevelPipeline_escalatesToException() {
+        var r = rule("library.r", "not_empty", "name", "ERROR", "NAME.REQUIRED");
+        var p = new LinkedHashMap<String,Object>();
+        p.put("id","p"); p.put("type","pipeline"); p.put("description","p");
+        p.put("entrypoint",true); p.put("strict",true);
+        p.put("message","Top-level strict failed"); p.put("strictCode","TOP.STRICT");
+        p.put("flow", List.of(step("rule","library.r")));
+        var compiled = engine.compile(List.of(r, p));
+
+        var result = engine.runPipeline(compiled, "p", Map.of("name", ""));
+        assertEquals(PipelineResult.Status.EXCEPTION, result.getStatus());
+        assertEquals(PipelineResult.Control.STOP, result.getControl());
+        assertEquals(2, result.getIssues().size());
+        assertEquals("NAME.REQUIRED", result.getIssues().get(0).getCode());
+        assertEquals("TOP.STRICT", result.getIssues().get(1).getCode());
+        assertEquals("EXCEPTION", result.getIssues().get(1).getLevel());
+        assertEquals("pipeline:p", result.getIssues().get(1).getRuleId());
+        assertEquals("p", result.getIssues().get(1).getPipelineId());
+        assertNull(result.getIssues().get(1).getField());
+    }
+
+    @Test void run_strictTopLevelPipeline_withWarningsOnly_doesNotEscalate() {
+        var r = rule("library.r", "not_empty", "name", "WARNING", "NAME.SOFT");
+        var p = new LinkedHashMap<String,Object>();
+        p.put("id","p"); p.put("type","pipeline"); p.put("description","p");
+        p.put("entrypoint",true); p.put("strict",true);
+        p.put("message","Top-level strict failed"); p.put("strictCode","TOP.STRICT");
+        p.put("flow", List.of(step("rule","library.r")));
+        var compiled = engine.compile(List.of(r, p));
+
+        var result = engine.runPipeline(compiled, "p", Map.of("name", ""));
+        assertEquals(PipelineResult.Status.OK_WITH_WARNINGS, result.getStatus());
+        assertEquals(PipelineResult.Control.CONTINUE, result.getControl());
+        assertEquals(1, result.getIssues().size());
+        assertEquals("NAME.SOFT", result.getIssues().get(0).getCode());
+    }
+
     // ── trace: key events ─────────────────────────────────────────────────────
 
     @Test void trace_containsPipelineStartEnd() {

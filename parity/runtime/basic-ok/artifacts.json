@@ -1,0 +1,21 @@
+[
+  {
+    "id": "library.r",
+    "type": "rule",
+    "description": "d",
+    "role": "check",
+    "operator": "not_empty",
+    "field": "person.name",
+    "level": "ERROR",
+    "code": "PERSON.NAME.REQUIRED",
+    "message": "required"
+  },
+  {
+    "id": "p",
+    "type": "pipeline",
+    "description": "d",
+    "entrypoint": true,
+    "strict": false,
+    "flow": [{ "rule": "library.r" }]
+  }
+]

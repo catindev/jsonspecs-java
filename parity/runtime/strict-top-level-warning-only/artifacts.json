@@ -1,0 +1,23 @@
+[
+  {
+    "id": "library.r",
+    "type": "rule",
+    "description": "d",
+    "role": "check",
+    "operator": "not_empty",
+    "field": "phone",
+    "level": "WARNING",
+    "code": "PHONE.SOFT",
+    "message": "soft"
+  },
+  {
+    "id": "p",
+    "type": "pipeline",
+    "description": "d",
+    "entrypoint": true,
+    "strict": true,
+    "message": "Top-level strict failed",
+    "strictCode": "TOP.STRICT",
+    "flow": [{ "rule": "library.r" }]
+  }
+]

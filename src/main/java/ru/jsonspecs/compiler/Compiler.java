@@ -59,7 +59,7 @@ public final class Compiler {
         var dictionaries = phase2.dictionaries();
 
         // Phase 3: schema
-        throwIfErrors(validateSchema(safe, sources));
+        throwIfErrors(validateSchema(safe, dictionaries, sources));
 
         // Phase 4: code uniqueness
         throwIfErrors(validateCodeUniqueness(safe, sources));
@@ -121,6 +121,7 @@ public final class Compiler {
 
     @SuppressWarnings("unchecked")
     private List<String> validateSchema(List<Map<String, Object>> artifacts,
+                                         Map<String, Map<String, Object>> dictionaries,
                                          Map<String, String> sources) {
         List<String> errors = new ArrayList<>();
         Set<String> validLevels = Set.of("WARNING", "ERROR", "EXCEPTION");
@@ -131,7 +132,7 @@ public final class Compiler {
             String loc  = where(id, sources);
 
             switch (type) {
-                case "rule" -> validateRuleSchema(a, loc, validLevels, errors);
+                case "rule" -> validateRuleSchema(a, dictionaries, loc, validLevels, errors);
                 case "pipeline" -> validatePipelineSchema(a, id, loc, errors);
                 case "condition" -> validateConditionSchema(a, loc, errors);
                 case "dictionary" -> validateDictionarySchema(a, loc, errors);
@@ -141,7 +142,9 @@ public final class Compiler {
     }
 
     @SuppressWarnings("unchecked")
-    private void validateRuleSchema(Map<String, Object> a, String loc,
+    private void validateRuleSchema(Map<String, Object> a,
+                                    Map<String, Map<String, Object>> dictionaries,
+                                    String loc,
                                     Set<String> validLevels, List<String> errors) {
         String role = str(a.get("role"));
         if (!Set.of("check", "predicate").contains(role))
@@ -173,12 +176,66 @@ public final class Compiler {
                 errors.add("Predicate rule " + loc + ": must not have level/code/message");
         }
 
+        // Operator-specific compile-time validation
+        validateOperatorParams(a, dictionaries, loc, errors);
+
+        // Optional meta validation
+        if (a.containsKey("meta") && !(a.get("meta") instanceof Map<?, ?>))
+            errors.add("Rule " + loc + ": meta must be an object if provided");
+
         // Aggregate validation
         if (a.containsKey("aggregate"))
             validateAggregate(a, role, loc, errors);
+    }
 
-        // Compile-time regex validation
-        if ("matches_regex".equals(a.get("operator"))) {
+    private static final Set<String> FIELD_COMPARE_OPERATORS = Set.of(
+        "field_less_than_field",
+        "field_greater_than_field",
+        "field_equals_field",
+        "field_not_equals_field",
+        "field_less_or_equal_than_field",
+        "field_greater_or_equal_than_field"
+    );
+
+    private void validateOperatorParams(Map<String, Object> a,
+                                        Map<String, Map<String, Object>> dictionaries,
+                                        String loc,
+                                        List<String> errors) {
+        String operator = str(a.get("operator"));
+
+        if ("any_filled".equals(operator)) {
+            Object fieldsObj = a.get("fields");
+            if (!(fieldsObj instanceof List<?> fields)
+                || fields.isEmpty()
+                || fields.stream().anyMatch(v -> !(v instanceof String s) || s.isBlank())) {
+                errors.add("Rule " + loc + ": any_filled requires fields[]");
+            }
+        }
+
+        if ("in_dictionary".equals(operator)) {
+            Object dictObj = a.get("dictionary");
+            if (!(dictObj instanceof Map<?, ?> rawDict)) {
+                errors.add("Rule " + loc + ": in_dictionary requires dictionary{type:static,id}");
+            } else {
+                Object type = rawDict.get("type");
+                Object id = rawDict.get("id");
+                if (!(type instanceof String sType) || !"static".equals(sType)
+                    || !(id instanceof String sId) || sId.isBlank()) {
+                    errors.add("Rule " + loc + ": in_dictionary requires dictionary{type:static,id}");
+                } else if (!dictionaries.containsKey(sId)) {
+                    errors.add("Rule " + loc + ": dictionary not found: " + sId);
+                }
+            }
+        }
+
+        if (FIELD_COMPARE_OPERATORS.contains(operator)) {
+            String valueField = str(a.get("value_field"));
+            if (valueField.isBlank()) {
+                errors.add("Rule " + loc + ": " + operator + " requires value_field");
+            }
+        }
+
+        if ("matches_regex".equals(operator)) {
             String val = str(a.get("value"));
             if (val.isBlank()) {
                 errors.add("Rule " + loc + ": matches_regex requires value (regex string)");
@@ -243,6 +300,8 @@ public final class Compiler {
             errors.add("Pipeline " + loc + ": entrypoint must be explicitly set to true|false");
         if (Boolean.TRUE.equals(a.get("strict")) && str(a.get("message")).isBlank())
             errors.add("Pipeline " + loc + ": message is required when strict=true");
+        if (Boolean.TRUE.equals(a.get("strict")) && a.containsKey("strictCode") && str(a.get("strictCode")).isBlank())
+            errors.add("Pipeline " + loc + ": strictCode must be non-empty string if provided");
 
         // required_context: must be a list of non-blank strings
         if (a.containsKey("required_context")) {
