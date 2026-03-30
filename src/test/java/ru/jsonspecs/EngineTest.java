@@ -210,6 +210,31 @@ class EngineTest {
         assertEquals("TIN.REQUIRED", result.getIssues().get(0).getCode());
     }
 
+
+    @Test void compile_condition_relativeRuleStep_resolvesWithinPipelineScope() {
+        var gate  = predicate("library.pred", "equals", "enabled", "value", true);
+        var local = rule("internal.fl.blocks.address.registration_country_not_us", "not_empty", "country", "ERROR", "COUNTRY");
+        var cond  = condition("internal.fl.blocks.address.registration_country_if_present",
+                              Map.of("all", List.of("library.pred")),
+                              List.of(step("rule", "registration_country_not_us")));
+        var compiled = engine.compile(List.of(gate, local, cond));
+        var cc = compiled.internal().conditions().get("internal.fl.blocks.address.registration_country_if_present");
+        assertNotNull(cc);
+        assertEquals(1, cc.steps().size());
+        var step = (ru.jsonspecs.compiler.CompiledStep.RuleStep) cc.steps().get(0);
+        assertEquals("internal.fl.blocks.address.registration_country_not_us", step.ruleId());
+        assertEquals("registration_country_not_us", step.ref());
+    }
+
+    @Test void compile_condition_relativePredicateInWhen_resolvesWithinPipelineScope() {
+        var pred = predicate("internal.fl.blocks.identity_core.citizenship_not_us", "not_equals", "citizenship", "value", "US");
+        var check = rule("internal.fl.blocks.identity_core.citizenship_present", "not_empty", "citizenship", "ERROR", "CITIZENSHIP");
+        var cond = condition("internal.fl.blocks.identity_core.citizenship_if_present",
+                             Map.of("all", List.of("citizenship_not_us")),
+                             List.of(step("rule", "citizenship_present")));
+        assertDoesNotThrow(() -> engine.compile(List.of(pred, check, cond)));
+    }
+
     // ── operators ─────────────────────────────────────────────────────────────
 
     @Test void op_matchesRegex_pass() {

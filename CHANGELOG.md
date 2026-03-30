@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 Format: [Semantic Versioning](https://semver.org/)
 
+## [1.3.0] - 2026-03-30
+
+### Changed
+- Relative artifact reference resolution now follows Node semantics more closely during compile-time normalization.
+- Condition-scoped rule and predicate refs are resolved against the owning pipeline scope (derived from condition id), matching Node runtime behaviour.
+- Pipeline step refs remain absolute-only, matching Node runtime behaviour.
+
+### Fixed
+- Fixed a parity gap where Java resolved condition-local refs against the full condition id instead of the pipeline scope, causing real snapshots with short internal refs to fail compilation while Node compiled them successfully.
+- Compiled condition steps now store fully resolved artifact ids for relative refs, preserving compile-once/run-many semantics.
+- Added regression coverage for relative rule refs in condition steps, relative predicate refs in condition `when`, and pipeline-step absolute ref semantics.
+- Extended the parity suite with a `relative-condition-refs` runtime case to guard Node-vs-Java service/runtime equivalence on scoped refs.
+
 ## [1.2.0] - 2026-03-30
 
 ### Fixed

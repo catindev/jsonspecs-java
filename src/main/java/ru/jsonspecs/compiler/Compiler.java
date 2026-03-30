@@ -394,65 +394,68 @@ public final class Compiler {
         List<String> errors = new ArrayList<>();
         for (var a : artifacts) {
             String type = str(a.get("type")), id = str(a.get("id"));
+            String scopePipelineId = scopePipelineId(type, id);
             if ("pipeline".equals(type) && a.get("flow") instanceof List<?> flow)
                 for (var s : flow)
                     if (s instanceof Map<?, ?> sm)
-                        errors.addAll(validateStepRef(id, (Map<String, Object>) sm, registry, sources));
+                        errors.addAll(validateStepRef(scopePipelineId, (Map<String, Object>) sm, registry, sources));
             if ("condition".equals(type)) {
-                errors.addAll(validateWhenRefs(id, a.get("when"), registry, sources));
+                errors.addAll(validateWhenRefs(scopePipelineId, id, a.get("when"), registry, sources));
                 if (a.get("steps") instanceof List<?> steps)
                     for (var s : steps)
                         if (s instanceof Map<?, ?> sm)
-                            errors.addAll(validateStepRef(id, (Map<String, Object>) sm, registry, sources));
+                            errors.addAll(validateStepRef(scopePipelineId, (Map<String, Object>) sm, registry, sources));
             }
         }
         return errors;
     }
 
     @SuppressWarnings("unchecked")
-    private List<String> validateStepRef(String scopeId, Map<String, Object> step,
+    private List<String> validateStepRef(String scopePipelineId, Map<String, Object> step,
                                           Map<String, Map<String, Object>> registry,
                                           Map<String, String> sources) {
         List<String> errors = new ArrayList<>();
         try {
             String kind = stepKind(step);
             String ref  = str(step.get(kind));
-            var target  = registry.get(resolveRef(ref, scopeId));
+            var target  = "pipeline".equals(kind)
+                ? registry.get(ref)
+                : registry.get(resolveRef(ref, scopePipelineId));
             if (target == null)
-                errors.add("Unresolved " + kind + " ref '" + ref + "' in " + scopeId);
+                errors.add("Unresolved " + kind + " ref '" + ref + "' in " + scopePipelineId);
             else if (!kind.equals(str(target.get("type"))))
-                errors.add("Ref '" + ref + "' in " + scopeId
+                errors.add("Ref '" + ref + "' in " + scopePipelineId
                     + " resolves to wrong type: expected " + kind + ", got " + str(target.get("type")));
         } catch (Exception e) {
-            errors.add("Step in " + scopeId + ": " + e.getMessage());
+            errors.add("Step in " + scopePipelineId + ": " + e.getMessage());
         }
         return errors;
     }
 
-    private List<String> validateWhenRefs(String condId, Object when,
+    private List<String> validateWhenRefs(String scopePipelineId, String condId, Object when,
                                            Map<String, Map<String, Object>> registry,
                                            Map<String, String> sources) {
         List<String> errors = new ArrayList<>();
-        try { collectPredicateRefs(WhenExpr.parse(when), condId, registry, errors); }
+        try { collectPredicateRefs(WhenExpr.parse(when), scopePipelineId, condId, registry, errors); }
         catch (Exception e) { errors.add("Condition " + condId + ": invalid when — " + e.getMessage()); }
         return errors;
     }
 
-    private void collectPredicateRefs(WhenExpr expr, String scopeId,
+    private void collectPredicateRefs(WhenExpr expr, String scopePipelineId, String condId,
                                        Map<String, Map<String, Object>> registry,
                                        List<String> errors) {
         switch (expr) {
             case WhenExpr.Single s -> {
-                String id = resolveRef(s.predicateId(), scopeId);
+                String id = resolveRef(s.predicateId(), scopePipelineId);
                 var target = registry.get(id);
                 if (target == null)
-                    errors.add("Unresolved predicate ref '" + s.predicateId() + "' in condition " + scopeId);
+                    errors.add("Unresolved predicate ref '" + s.predicateId() + "' in condition " + condId);
                 else if (!"rule".equals(target.get("type")) || !"predicate".equals(target.get("role")))
-                    errors.add("Ref '" + s.predicateId() + "' in condition " + scopeId
+                    errors.add("Ref '" + s.predicateId() + "' in condition " + condId
                         + " must be a predicate rule");
             }
-            case WhenExpr.All a -> a.items().forEach(i -> collectPredicateRefs(i, scopeId, registry, errors));
-            case WhenExpr.Any a -> a.items().forEach(i -> collectPredicateRefs(i, scopeId, registry, errors));
+            case WhenExpr.All a -> a.items().forEach(i -> collectPredicateRefs(i, scopePipelineId, condId, registry, errors));
+            case WhenExpr.Any a -> a.items().forEach(i -> collectPredicateRefs(i, scopePipelineId, condId, registry, errors));
         }
     }
 
@@ -465,8 +468,9 @@ public final class Compiler {
         for (var a : artifacts) {
             if (!"condition".equals(a.get("type"))) continue;
             String id   = str(a.get("id"));
+            String scopePipelineId = scopePipelineId("condition", id);
             WhenExpr when = WhenExpr.parse(a.get("when"));
-            var steps = buildSteps((List<Map<String, Object>>) a.get("steps"), id, counter);
+            var steps = buildSteps((List<Map<String, Object>>) a.get("steps"), scopePipelineId, counter);
             result.put(id, new CompiledCondition(id, when, steps));
         }
         return result;
@@ -494,18 +498,17 @@ public final class Compiler {
     }
 
     @SuppressWarnings("unchecked")
-    private List<CompiledStep> buildSteps(List<Map<String, Object>> raw, String scopeId, int[] counter) {
+    private List<CompiledStep> buildSteps(List<Map<String, Object>> raw, String scopePipelineId, int[] counter) {
         if (raw == null) return List.of();
         List<CompiledStep> steps = new ArrayList<>();
         for (var s : raw) {
-            String stepId = scopeId + ":step:" + counter[0]++;
+            String stepId = scopePipelineId + ":step:" + counter[0]++;
             String kind   = stepKind(s);
             String ref    = str(s.get(kind));
-            String resolved = resolveRef(ref, scopeId);
             steps.add(switch (kind) {
-                case "rule"      -> new CompiledStep.RuleStep(resolved, stepId, ref);
-                case "pipeline"  -> new CompiledStep.PipelineStep(resolved, stepId);
-                case "condition" -> new CompiledStep.ConditionStep(resolved, stepId);
+                case "rule"      -> new CompiledStep.RuleStep(resolveRef(ref, scopePipelineId), stepId, ref);
+                case "pipeline"  -> new CompiledStep.PipelineStep(ref, stepId);
+                case "condition" -> new CompiledStep.ConditionStep(resolveRef(ref, scopePipelineId), stepId);
                 default -> throw new IllegalStateException("Unknown step kind: " + kind);
             });
         }
@@ -567,12 +570,23 @@ public final class Compiler {
         return src != null ? id + " (" + src + ")" : id;
     }
 
-    public static String resolveRef(String ref, String scopeId) {
+    public static String resolveRef(String ref, String scopePipelineId) {
         if (ref.startsWith("library.") || ref.startsWith("internal.")
                 || ref.startsWith("entrypoints."))
             return ref;
         if (ref.contains(".")) return ref;   // treat as absolute
-        return scopeId + "." + ref;          // scoped local ref
+        if (scopePipelineId == null || scopePipelineId.isBlank())
+            throw new IllegalArgumentException("Cannot resolve scoped ref '" + ref + "' without pipeline scope");
+        return scopePipelineId + "." + ref;  // scoped local ref
+    }
+
+    static String scopePipelineId(String artifactType, String artifactId) {
+        if ("pipeline".equals(artifactType)) return artifactId;
+        if ("condition".equals(artifactType)) {
+            int idx = artifactId.lastIndexOf('.');
+            return idx > 0 ? artifactId.substring(0, idx) : null;
+        }
+        return artifactId;
     }
 
     @SuppressWarnings("unchecked")

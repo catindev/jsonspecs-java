@@ -1,8 +1,0 @@
-{
-  "status": "EXCEPTION",
-  "control": "STOP",
-  "issues": [
-    { "level": "ERROR", "code": "NAME.REQUIRED", "message": "m", "field": "name" },
-    { "level": "EXCEPTION", "code": "TOP.STRICT", "message": "Top-level strict failed", "field": null }
-  ]
-}
