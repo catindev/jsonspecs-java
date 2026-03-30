@@ -295,13 +295,20 @@ public final class StandardOperators {
     /**
      * Extract dictionary id from rule's {@code "dictionary"} field.
      * Canonical form: {@code {"type":"static","id":"currencies"}}.
-     * Also accepts plain string id as fallback.
      */
     @SuppressWarnings("unchecked")
     private static String resolveDictId(Map<String, Object> rule) {
         Object raw = rule.get("dictionary");
-        if (raw instanceof Map<?, ?> m) return str(((Map<String, Object>) m).get("id"));
-        return str(raw);
+        if (!(raw instanceof Map<?, ?> m)) {
+            throw new IllegalArgumentException("in_dictionary requires dictionary{type:static,id}");
+        }
+        Object type = ((Map<String, Object>) m).get("type");
+        Object id = ((Map<String, Object>) m).get("id");
+        if (!(type instanceof String sType) || !"static".equals(sType)
+            || !(id instanceof String sId) || sId.isBlank()) {
+            throw new IllegalArgumentException("in_dictionary requires dictionary{type:static,id}");
+        }
+        return sId;
     }
 
     /**

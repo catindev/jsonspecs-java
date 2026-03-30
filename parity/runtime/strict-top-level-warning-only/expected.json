@@ -1,0 +1,7 @@
+{
+  "status": "OK_WITH_WARNINGS",
+  "control": "CONTINUE",
+  "issues": [
+    { "level": "WARNING", "code": "PHONE.SOFT", "message": "soft", "field": "phone" }
+  ]
+}

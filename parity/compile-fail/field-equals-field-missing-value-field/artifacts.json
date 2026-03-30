@@ -1,0 +1,10 @@
+[
+  {
+    "id": "library.pred",
+    "type": "rule",
+    "description": "d",
+    "role": "predicate",
+    "operator": "field_equals_field",
+    "field": "a"
+  }
+]

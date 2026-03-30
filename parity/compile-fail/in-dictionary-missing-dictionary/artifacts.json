@@ -1,0 +1,11 @@
+[
+  {
+    "id": "library.pred",
+    "type": "rule",
+    "description": "d",
+    "role": "predicate",
+    "operator": "in_dictionary",
+    "field": "currency",
+    "dictionary": { "type": "static", "id": "missing" }
+  }
+]

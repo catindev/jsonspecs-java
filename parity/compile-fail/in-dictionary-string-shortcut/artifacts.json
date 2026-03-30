@@ -1,0 +1,17 @@
+[
+  {
+    "id": "dict.currencies",
+    "type": "dictionary",
+    "description": "d",
+    "entries": ["RUB", "USD"]
+  },
+  {
+    "id": "library.pred",
+    "type": "rule",
+    "description": "d",
+    "role": "predicate",
+    "operator": "in_dictionary",
+    "field": "currency",
+    "dictionary": "dict.currencies"
+  }
+]

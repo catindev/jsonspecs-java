@@ -15,7 +15,7 @@ Java-рантайм для [jsonspecs](https://www.npmjs.com/package/jsonspecs):
 <dependency>
   <groupId>ru.jsonspecs</groupId>
   <artifactId>jsonspecs</artifactId>
-  <version>1.1.2</version>
+  <version>1.2.0</version>
 </dependency>
 ```
 
@@ -46,7 +46,7 @@ Java-рантайм для [jsonspecs](https://www.npmjs.com/package/jsonspecs):
 
 Node-версия остаётся источником истины для DSL и runtime semantics. Java-версия — это **Java runtime для JSON DSL**, а не отдельный Java DSL с builders или собственной моделью правил. Java API может немного отличаться ради удобства Java-разработчиков, но входной snapshot и выходная семантика должны совпадать.
 
-### Что гарантированно совпадает
+### Что уже приведено к parity с Node
 
 - Все типы артефактов: `rule`, `condition`, `pipeline`, `dictionary`
 - Все стандартные имена операторов и их семантика
@@ -69,11 +69,13 @@ Node-версия остаётся источником истины для DSL 
 
 ### Версионное соответствие
 
-| Node runtime | Java runtime |
-| --- | --- |
-| `jsonspecs` `1.1.0` | `jsonspecs-java` `1.1.2` |
+| Node runtime        | Java runtime             |
+| ------------------- | ------------------------ |
+| `jsonspecs` `1.1.0` | `jsonspecs-java` `1.2.0` |
 
 Политика простая: Java-линия следует за Node-линией по семантике snapshot и runtime contract. При несовпадении документации и поведения источником истины считается текущая Node-спецификация, а Java-реализация должна быть приведена к ней.
+
+Parity теперь подтверждается не только Java-тестами, но и минимальным автоматическим cross-runtime parity suite: `scripts/parity-check.sh` прогоняет одни и те же golden cases через Node и Java, а затем сравнивает compile-fail и runtime результаты. Suite покрывает ключевые расхождения, исправленные в `1.2.0`, и может быть расширен новыми кейсами в каталоге `parity/`.
 
 ## Стабильный публичный API
 
@@ -507,7 +509,7 @@ FRUIT.NOT_APPLE
 | `less_than`                         | Поле < `value` (число или ISO-дата)                                 |
 | `length_equals`                     | Длина строки равна `value`                                          |
 | `length_max`                        | Длина строки <= `value`                                             |
-| `in_dictionary`                     | Значение поля входит в dictionary `values`                          |
+| `in_dictionary`                     | Значение поля входит в dictionary `entries`                         |
 | `any_filled`                        | Хотя бы одно из `fields[]` не пусто                                 |
 | `field_equals_field`                | Два поля равны                                                      |
 | `field_not_equals_field`            | Два поля различаются                                                |
@@ -532,3 +534,26 @@ FRUIT.NOT_APPLE
 ## Лицензия
 
 MIT
+
+## Parity suite
+
+Минимальный cross-runtime parity suite лежит в каталоге `parity/` и запускается так:
+
+```bash
+bash scripts/parity-check.sh
+```
+
+Скрипт:
+
+- компилирует Java test harness;
+- запускает одни и те же кейсы через Node и Java;
+- сравнивает compile-fail кейсы по обязательным подстрокам ошибок;
+- сравнивает runtime кейсы по `status`, `control` и нормализованному набору `issues`.
+
+По умолчанию Node-рантайм берётся из `JSONSPECS_NODE_PATH`, если переменная окружения задана. Если нет, скрипт автоматически ставит npm-пакет `jsonspecs@1.1.0` во временный каталог `.parity-node-runtime/`. Для явного пина можно передать `JSONSPECS_NODE_PACKAGE_SPEC`, например:
+
+```bash
+JSONSPECS_NODE_PACKAGE_SPEC=jsonspecs@1.1.0 bash scripts/parity-check.sh
+```
+
+Чтобы добавить новый кейс, создай подпапку в `parity/runtime/` или `parity/compile-fail/` с `artifacts.json` и соответствующим `expected.json` или `assert.json`.

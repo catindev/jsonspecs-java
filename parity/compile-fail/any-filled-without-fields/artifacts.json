@@ -1,0 +1,20 @@
+[
+  {
+    "id": "library.r",
+    "type": "rule",
+    "description": "d",
+    "role": "check",
+    "operator": "any_filled",
+    "level": "ERROR",
+    "code": "E",
+    "message": "m"
+  },
+  {
+    "id": "p",
+    "type": "pipeline",
+    "description": "d",
+    "entrypoint": true,
+    "strict": false,
+    "flow": [{ "rule": "library.r" }]
+  }
+]

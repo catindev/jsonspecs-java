@@ -47,12 +47,14 @@ final class Runner {
                 return finishPipeline("EXCEPTION", issues, trace, null, null, safeMode);
 
             OperatorContext ctx = new OperatorContext(flat, compiled.dictionaries());
-            execSteps(compiled, pipeline.steps(), pipelineId, ctx, issues, trace);
+            int pipelineIssuesStart = issues.size();
+            ExecControl ctl = execSteps(compiled, pipeline.steps(), pipelineId, ctx, issues, trace);
+            ctl = applyStrictBoundary(pipeline, pipelineIssuesStart, null, issues, trace, ctl);
 
             String status = computeStatus(issues);
             addTrace(trace, "pipeline:end",
                 "pipeline:" + pipelineId,
-                Map.of("pipelineId", pipelineId, "status", status));
+                Map.of("pipelineId", pipelineId, "status", status, "control", ctl.name()));
 
             return finishPipeline(status, issues, trace, null, null, safeMode);
 
@@ -346,32 +348,39 @@ final class Runner {
             return ExecControl.STOP;
 
         ExecControl ctl = execSteps(compiled, nested.steps(), step.pipelineId(), ctx, issues, trace);
-
-        // Strict escalation: fires when nested pipeline has ERROR/EXCEPTION issues —
-        // regardless of whether execution was stopped by EXCEPTION.
-        if (nested.strict()) {
-            boolean localHasErrors = issues.subList(issuesBefore, issues.size()).stream()
-                .anyMatch(i -> "ERROR".equals(i.getLevel()) || "EXCEPTION".equals(i.getLevel()));
-            if (localHasErrors) {
-                String code = !nested.strictCode().isBlank()
-                    ? nested.strictCode() : "STRICT_PIPELINE_FAILED";
-                String msg  = !nested.strictMessage().isBlank()
-                    ? nested.strictMessage() : "Pipeline strict constraint failed";
-                issues.add(Issue.builder("EXCEPTION")
-                    .code(code).message(msg)
-                    .ruleId("pipeline:" + nested.id()).pipelineId(nested.id())
-                    .build());
-                addTrace(trace, "pipeline:strict",
-                    "pipeline:" + nested.id(),
-                    Map.of("pipelineId", nested.id(), "code", code));
-                return ExecControl.STOP;
-            }
-        }
+        ctl = applyStrictBoundary(nested, issuesBefore, step.stepId(), issues, trace, ctl);
 
         addTrace(trace, "pipeline:exit",
             "pipeline:" + scopeId,
             Map.of("pipelineId", nested.id(), "control", ctl.name()));
         return ctl;
+    }
+
+    private static ExecControl applyStrictBoundary(CompiledPipeline pipeline,
+                                                   int issuesStart,
+                                                   String stepId,
+                                                   List<Issue> issues,
+                                                   List<TraceEntry> trace,
+                                                   ExecControl currentControl) {
+        if (!pipeline.strict()) return currentControl;
+
+        boolean localHasErrors = issues.subList(issuesStart, issues.size()).stream()
+            .anyMatch(i -> "ERROR".equals(i.getLevel()) || "EXCEPTION".equals(i.getLevel()));
+        if (!localHasErrors) return currentControl;
+
+        String code = !pipeline.strictCode().isBlank()
+            ? pipeline.strictCode() : "STRICT_PIPELINE_FAILED";
+        String msg  = !pipeline.strictMessage().isBlank()
+            ? pipeline.strictMessage() : "Pipeline strict constraint failed";
+        issues.add(Issue.builder("EXCEPTION")
+            .code(code).message(msg).field(null)
+            .ruleId("pipeline:" + pipeline.id()).pipelineId(pipeline.id())
+            .stepId(stepId)
+            .build());
+        addTrace(trace, "pipeline:strict",
+            "pipeline:" + pipeline.id(),
+            Map.of("pipelineId", pipeline.id(), "code", code));
+        return ExecControl.STOP;
     }
 
     // ── condition ─────────────────────────────────────────────────────────────

@@ -1,0 +1,12 @@
+[
+  {
+    "id": "library.r",
+    "type": "rule",
+    "description": "d",
+    "role": "predicate",
+    "operator": "equals",
+    "field": "a",
+    "value": 1,
+    "meta": "oops"
+  }
+]
